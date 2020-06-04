@@ -1,0 +1,174 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: black;
+  color: white;
+}
+
+#usersOnline {
+  border: 2px solid white;
+  width: 20%;
+  height: 20vh;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+#usersOnline h3 {
+  font-family: sans-serif;
+  position: absolute;
+  margin: auto;
+  left: 30%;
+  top: 5%;
+}
+
+#usersOnlineListWrapper {
+  border-top: 1px solid white;
+  margin-top: 11%;
+  height: 75%;
+  overflow: auto;
+}
+
+#usersOnlineListWrapper li {
+  float: left;
+  margin: 2% 2% 5px 5%;
+}
+
+#usersOnlineListWrapper span {
+  margin-left: -10px;
+}
+
+#chat {
+  position: absolute;
+  border: 2px solid white;
+  width: 20%;
+  height: 40vh;
+  overflow: auto;
+  right: 0;
+  top: 25%;
+}
+
+#message {
+  border: 1px solid blue;
+  padding: 7px;
+  width: 100%;
+}
+
+#sendWrapper {
+  position: sticky;
+  height: 15%;
+  top: 85%;
+  bottom: 0;
+  background-color: black;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+#sendWrapper input,
+button {
+  height: 60%;
+}
+
+#messageSend {
+  border-color: white;
+  border-radius: 15px;
+  color: white;
+  background-color: blue;
+  cursor: pointer;
+  outline: none;
+}
+
+.playerNameBox {
+  border: 2px solid white;
+  width: 7%;
+  height: 7vh;
+  position: absolute;
+  top: 17%;
+  text-align: center;
+  line-height: 6vh;
+  cursor: pointer;
+}
+
+#player1 {
+  left: 20%;
+}
+
+#player2 {
+  left: 55%;
+}
+
+#leaveGame {
+  border: 2px solid white;
+  width: 5%;
+  height: 5vh;
+  text-align: center;
+  line-height: 4vh;
+  cursor: pointer;
+  display: none;
+}
+
+#signWrapper {
+  position: absolute;
+  width: 8%;
+  height: 40vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  top: 28%;
+  left: 1.5%;
+  display: none;
+}
+
+.sign {
+  height: 30%;
+  border: 2px solid white;
+  cursor: pointer;
+}
+
+.sign img {
+  width: 100%;
+  height: 100%;
+}
+
+.playerChoice {
+  width: 25%;
+  height: 40vh;
+  border: 2px solid white;
+  position: absolute;
+  top: 28%;
+  /* background-size: contain; */
+}
+
+.playerChoice img {
+  width: 100%;
+  height: 100%;
+}
+
+#player1Choice {
+  left: 11%;
+}
+
+#player2Choice {
+  left: 46%;
+}
+
+#startGameButton {
+  position: absolute;
+  border: 2px solid white;
+  width: 10%;
+  height: 6vh;
+  left: 36%;
+  top: 80%;
+  text-align: center;
+  line-height: 5.4vh;
+  letter-spacing: 10px;
+  text-indent: 10px;
+  background-color: blue;
+  border-radius: 15px;
+  cursor: pointer;
+  display: none;
+}
