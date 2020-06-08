@@ -13,6 +13,13 @@ const startGameButton = document.getElementById("startGameButton");
 const signBoxes = document.getElementsByClassName("sign");
 const leftPlayerChoice = document.getElementById("choice1Img");
 const rightPlayerChoice = document.getElementById("choice2Img");
+const lockEffectLeft = document.getElementById("leftPlayerChooseEffect");
+const lockEffectRight = document.getElementById("rightPlayerChooseEffect");
+const walls = document.getElementsByClassName("walls");
+const wallSound = new Audio("./assets/sound/wall-lifting.wav");
+const scoreBoxes = document.getElementsByClassName("scoreBox");
+const timer = document.getElementById("timer");
+const info = document.getElementById("info");
 
 const socket = io("http://localhost:4000");
 
@@ -126,6 +133,9 @@ startGameButton.addEventListener("click", () => {
     { name: leftNameBox.innerHTML, role: "player1", sign: "" },
     { name: rightNameBox.innerHTML, role: "player2", sign: "" }
   );
+  showScoreBoxes();
+  showTimer();
+  enableEffect();
   enableSignChoose();
   assignSignBoxesToPlayersNormal(players);
   socket.emit("players-set", players);
@@ -133,6 +143,9 @@ startGameButton.addEventListener("click", () => {
 });
 
 socket.on("show-players", (players) => {
+  showScoreBoxes();
+  showTimer();
+  enableEffect();
   const isSpectator = isUserSpectator(players);
   if (isSpectator) {
     if (leftNameBox.innerHTML === players[0].name)
@@ -149,22 +162,40 @@ socket.on("player-chose-sign", ({ player, players }) => {
   const signIndex = signs.findIndex((sign) => sign.name === player.sign);
   const isSpectator = isUserSpectator(players);
   if (isSpectator) {
-    if (leftPlayer.name === player.name)
+    if (leftPlayer.name === player.name) {
       leftPlayer.choice.src = signs[signIndex].src;
-    else rightPlayer.choice.src = signs[signIndex].src;
+      triggerLockEffect(lockEffectLeft);
+    } else {
+      rightPlayer.choice.src = signs[signIndex].src;
+      triggerLockEffect(lockEffectRight);
+    }
   } else {
     rightPlayer.choice.src = signs[signIndex].src;
+    triggerLockEffect(lockEffectRight);
   }
 });
 
 function SetSign() {
+  triggerLockEffect(lockEffectLeft);
   const { name, src } = signs[this.dataset.index];
   const sign = name;
   const Img = src;
   leftPlayerChoice.src = Img;
-  // disableSignChoose();
+  disableSignChoose();
   socket.emit("self-choose-sign", { user, sign });
 }
+
+socket.on("start-game", async (winner) => {
+  await startCountdown();
+  await liftWalls();
+  await displayWinner(winner);
+  await dropWalls();
+  enableSignChoose();
+});
+
+socket.on("start-game-for-mid-game-spec", (winner) => {
+  liftWalls();
+});
 
 ////////////////// **  ** ///////////////////////////
 
@@ -234,7 +265,6 @@ function assignSignBoxesToPlayersInverted(players) {
 }
 
 function showPlayerSigns(players) {
-  socket.emit("test", { user, leftPlayer, rightPlayer, players });
   const sign1Index = signs.findIndex((sign) => sign.name === players[0].sign);
   const sign2Index = signs.findIndex((sign) => sign.name === players[1].sign);
   // if both players selected sign
@@ -258,6 +288,7 @@ function assignSignToBoth(sign1Index, sign2Index, players) {
 }
 
 function assignSignToOne(sign1Index, sign2Index, players) {
+  // check which player has selected sign and assign it based on his position
   if (players[0].sign !== "") {
     if (leftPlayer.name === players[0].name)
       leftPlayer.choice.src = signs[sign1Index].src;
@@ -267,4 +298,87 @@ function assignSignToOne(sign1Index, sign2Index, players) {
       leftPlayer.choice.src = signs[sign2Index].src;
     else rightPlayer.choice.src = signs[sign2Index].src;
   }
+}
+
+function enableEffect() {
+  lockEffectLeft.style.display = "block";
+  lockEffectRight.style.display = "block";
+}
+
+function triggerLockEffect(element) {
+  element.style.transform = "scale(1.2)";
+  element.style.opacity = 0;
+  setTimeout(() => {
+    element.style.transform = "scale(1)";
+    setTimeout(() => {
+      element.style.opacity = 1;
+    }, 300);
+  }, 500);
+}
+
+function liftWalls() {
+  wallSound.play();
+  let wallPosition = 0;
+  return new Promise((resolve, reject) => {
+    const lift = setInterval(() => {
+      wallPosition -= 1;
+      for (let i = 0; i < walls.length; i++)
+        walls[i].style.marginTop = wallPosition + "px";
+      if (wallPosition < -260) {
+        clearInterval(lift);
+        resolve();
+      }
+    }, 8);
+  });
+}
+
+function dropWalls() {
+  wallSound.play();
+  let wallPosition = -260;
+  return new Promise((resolve, reject) => {
+    const lift = setInterval(() => {
+      wallPosition += 1;
+      for (let i = 0; i < walls.length; i++)
+        walls[i].style.marginTop = wallPosition + "px";
+      if (wallPosition > 0) {
+        clearInterval(lift);
+        resolve();
+      }
+    });
+  }, 8);
+}
+
+function showScoreBoxes() {
+  for (let i = 0; i < scoreBoxes.length; i++) {
+    scoreBoxes[i].style.display = "block";
+  }
+}
+
+function showTimer() {
+  timer.style.display = "block";
+}
+
+function startCountdown() {
+  let timerValue = 3;
+  timer.innerHTML = timerValue;
+  return new Promise((resolve, reject) => {
+    let count = setInterval(() => {
+      timerValue--;
+      timer.innerHTML = timerValue;
+      if (timerValue === 0) {
+        clearInterval(count);
+        resolve();
+      }
+    }, 1000);
+  });
+}
+
+function displayWinner(winner) {
+  if (winner === "tie") info.innerHTML = "NOBODY WON THIS TIME";
+  else info.innerHTML = `${winner} WON THIS TIME`;
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve();
+    }, 3000);
+  });
 }

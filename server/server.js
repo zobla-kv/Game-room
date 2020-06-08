@@ -18,6 +18,8 @@ io.on("connection", (socket) => {
     if (players !== undefined) {
       socket.emit("show-players", players);
       socket.emit("show-signs", players);
+      if (players[0].sign !== "" && players[1].sign !== "")
+        socket.emit("start-game-for-mid-game-spec");
     }
   });
 
@@ -64,6 +66,17 @@ io.on("connection", (socket) => {
       player: players[playerIndex],
       players: players,
     });
+    if (players[0].sign !== "" && players[1].sign !== "") {
+      const winner = whoIsWinner();
+      socket.emit("start-game", winner);
+      socket.broadcast.emit("start-game", winner);
+      // da bi stigo broadcast pre uklananja
+      setTimeout(() => {
+        for (let i = 0; i < players.length; i++) {
+          players[i].sign = "";
+        }
+      }, 1000);
+    }
   });
 });
 
@@ -75,5 +88,36 @@ function updateInGameStatus(player, action) {
   else {
     const inGameIndex = playersInGame.findIndex((e) => e === player);
     if (inGameIndex !== -1) playersInGame.splice(inGameIndex, 1);
+  }
+}
+
+function whoIsWinner() {
+  const player1 = players[0];
+  const player2 = players[1];
+  let winner;
+  if (player1.sign === player2.sign) {
+    winner = "tie";
+    return winner;
+  } else if (player1.sign === "paper") {
+    if (player2.sign === "rock") {
+      winner = player1.name;
+      return winner;
+    } else {
+      if (player2.sign === "scissors") {
+        winner = player2.name;
+        return winner;
+      }
+    }
+  }
+  if (player1.sign === "scissors") {
+    if (player2.sign === "rock") {
+      winner = player2.name;
+      return winner;
+    } else {
+      if (player2.sign === "paper") {
+        winner = player1.name;
+        return winner;
+      }
+    }
   }
 }
