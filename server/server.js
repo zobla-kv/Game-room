@@ -6,7 +6,7 @@ const app = express();
 const users = {};
 users.online = [];
 const playersInGame = [];
-const playerSigns = [];
+let players;
 
 io.on("connection", (socket) => {
   socket.on("new-user", (name) => {
@@ -14,7 +14,15 @@ io.on("connection", (socket) => {
     socket.emit("users-connected", users.online);
     socket.broadcast.emit("users-connected", users.online);
     socket.emit("players-in-game", playersInGame);
-    // console.log(playersInGame);
+    // for users that join mid-game
+    if (players !== undefined) {
+      socket.emit("show-players", players);
+      socket.emit("show-signs", players);
+    }
+  });
+
+  socket.on("new-message", (message) => {
+    socket.broadcast.emit("print-message", message);
   });
 
   socket.on("self-join-game", (player) => {
@@ -22,22 +30,13 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("player-joined-game", { player, playersInGame });
   });
 
-  socket.on("test", (p) => {
-    console.log(p);
-  });
-
   socket.on("self-leave-game", (player) => {
-    updateInGameStatus(player, "remove");
-    socket.broadcast.emit("player-left-game", playersInGame);
-  });
-
-  // socket.on("self-choose-sign", ({user, sign}) => {
-  //   console.log(chosenSign);
-  //   socket.broadcast.emit("player-chose-sign", { chosenSign, playersInGame });
-  // });
-
-  socket.on("new-message", (message) => {
-    socket.broadcast.emit("print-message", message);
+    // broadcast ne radi lepo kad ostane 1 na stranici O.o' !
+    socket.broadcast.emit("player-left-game", { player, playersInGame });
+    // timeout da bi stiglo svima da emituje pre nego sto ga ukloni
+    setTimeout(() => {
+      updateInGameStatus(player, "remove");
+    }, 1000);
   });
 
   socket.on("self-leave", (user) => {
@@ -46,6 +45,24 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("user-disconnected", {
       usersOnline: users.online,
       removedUser: removedUser[0].name,
+    });
+  });
+
+  socket.on("test", (p) => {
+    console.log(p);
+  });
+
+  socket.on("players-set", (playersArray) => {
+    players = playersArray;
+    socket.broadcast.emit("show-players", players);
+  });
+
+  socket.on("self-choose-sign", ({ user, sign }) => {
+    const playerIndex = players.findIndex((e) => e.name === user);
+    players[playerIndex].sign = sign;
+    socket.broadcast.emit("player-chose-sign", {
+      player: players[playerIndex],
+      players: players,
     });
   });
 });

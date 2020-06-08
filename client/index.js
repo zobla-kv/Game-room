@@ -5,20 +5,21 @@ const sendMsg = document.getElementById("messageSend");
 const msgWrapper = document.getElementById("messageWrapper");
 const usersOnline = document.getElementById("usersOnline");
 const userslistWrapper = document.getElementById("usersOnlineListWrapper");
-const player1Box = document.getElementById("player1"); // name box
-const player2Box = document.getElementById("player2");
+const leftNameBox = document.getElementById("player1"); // name box
+const rightNameBox = document.getElementById("player2");
 const leaveGame = document.getElementById("leaveGame");
 const signWrapper = document.getElementById("signWrapper");
 const startGameButton = document.getElementById("startGameButton");
+const signBoxes = document.getElementsByClassName("sign");
+const leftPlayerChoice = document.getElementById("choice1Img");
+const rightPlayerChoice = document.getElementById("choice2Img");
 
 const socket = io("http://localhost:4000");
-export default socket;
 
 let user = "";
 while (user === "" || user === null) {
   user = prompt("Enter your name");
 }
-export { user };
 
 socket.emit("new-user", user);
 
@@ -30,35 +31,35 @@ socket.on("print-message", ({ user, message }) => {
   printMessage(`${user}: ${message}`);
 });
 
+window.onbeforeunload = () => {
+  // socket.emit("self-leave-game", user); // ukloni ga iz gejma al ne iz chata
+  socket.emit("self-leave", user); //! koji stoji ovde ne emituje se svaki put
+};
+
 socket.on("user-disconnected", ({ usersOnline, removedUser }) => {
-  // socket.emit("test", usersOnline);
-  socket.emit("self-leave-game", removedUser);
+  socket.emit("self-leave-game", removedUser); // ukloni ga s chata al ne iz gejma, //! svaki emituje ovo, a treba samo jedan, ne valjda da bude ovde
   printUsers(usersOnline);
 });
 
-window.onbeforeunload = () => {
-  socket.emit("self-leave", user);
-};
-
-player1Box.addEventListener("click", () => {
-  if (player1Box.innerHTML !== "JOIN") return;
+leftNameBox.addEventListener("click", () => {
+  if (leftNameBox.innerHTML !== "JOIN") return;
   socket.emit("self-join-game", user);
-  player1Box.innerHTML = user;
+  leftNameBox.innerHTML = user;
   leaveGame.style.display = "block";
   signWrapper.style.display = "flex";
 });
 
 socket.on("player-joined-game", ({ player, playersInGame }) => {
-  player2Box.innerHTML === "JOIN"
-    ? (player2Box.innerHTML = player)
-    : (player1Box.innerHTML = player);
+  rightNameBox.innerHTML === "JOIN"
+    ? (rightNameBox.innerHTML = player)
+    : (leftNameBox.innerHTML = player);
   if (playersInGame.length === 2 && playersInGame.includes(user))
     startGameButton.style.display = "block";
 });
 
 leaveGame.addEventListener("click", () => {
   socket.emit("self-leave-game", user);
-  player1Box.innerHTML = "JOIN";
+  leftNameBox.innerHTML = "JOIN";
   leaveGame.style.display = "none";
   signWrapper.style.display = "none";
   startGameButton.style.display = "none";
@@ -66,28 +67,106 @@ leaveGame.addEventListener("click", () => {
 
 socket.on("players-in-game", (playersInGame) => {
   if (playersInGame.length === 1) {
-    player2Box.innerHTML = playersInGame[0];
+    rightNameBox.innerHTML = playersInGame[0];
   }
   if (playersInGame.length === 2) {
-    player1Box.innerHTML = playersInGame[0];
-    player2Box.innerHTML = playersInGame[1];
+    leftNameBox.innerHTML = playersInGame[0];
+    rightNameBox.innerHTML = playersInGame[1];
   }
 });
 
-socket.on("player-left-game", (playersInGame) => {
-  // check if user is spectator (not in game)
-  if (!playersInGame.includes(user)) {
-    playersInGame.length === 1
-      ? (player2Box.innerHTML = playersInGame[0])
-      : (player2Box.innerHTML = "JOIN");
-    player1Box.innerHTML = "JOIN";
-  } else player2Box.innerHTML = "JOIN"; // ovo treba da se trigeruje samo kad igrac izadje, ne spectator. Ispravi !
+socket.on("player-left-game", ({ player, playersInGame }) => {
+  // dal je korisnik koji je izaso bio igrac, ako nije preskace se sve
+  if (playersInGame.includes(player)) {
+    // dal je trenutni korisnik igrac
+    if (playersInGame.includes(user)) rightNameBox.innerHTML = "JOIN";
+    else {
+      // ovaj blok se prikazuje spectatoru
+      if (playersInGame.length === 2) {
+        const index =
+          playersInGame.findIndex((e) => e === player) === 0 ? 1 : 0;
+        rightNameBox.innerHTML = playersInGame[index];
+        leftNameBox.innerHTML = "JOIN";
+      } else if (playersInGame.length === 1) {
+        leftNameBox.innerHTML = "JOIN";
+        rightNameBox.innerHTML = "JOIN";
+      }
+    }
+    startGameButton.style.display = "none";
+  }
+});
+
+// for users that join mid-game
+socket.on("show-signs", (players) => {
+  showPlayerSigns(players);
+});
+
+//////////////////// ** game **////////////////////////////
+const signs = [
+  {
+    name: "rock",
+    src: "/client/assets/img/rock-lg.PNG",
+  },
+  {
+    name: "paper",
+    src: "/client/assets/img/paper-lg.PNG",
+  },
+  {
+    name: "scissors",
+    src: "/client/assets/img/scissors-lg.PNG",
+  },
+];
+
+let leftPlayer = {},
+  rightPlayer = {};
+
+startGameButton.addEventListener("click", () => {
+  const players = [];
+  players.push(
+    { name: leftNameBox.innerHTML, role: "player1", sign: "" },
+    { name: rightNameBox.innerHTML, role: "player2", sign: "" }
+  );
+  enableSignChoose();
+  assignSignBoxesToPlayersNormal(players);
+  socket.emit("players-set", players);
   startGameButton.style.display = "none";
 });
 
-startGameButton.addEventListener("click", () => {
-  startGameButton.style.display = "none";
+socket.on("show-players", (players) => {
+  const isSpectator = isUserSpectator(players);
+  if (isSpectator) {
+    if (leftNameBox.innerHTML === players[0].name)
+      assignSignBoxesToPlayersNormal(players);
+    else assignSignBoxesToPlayersInverted(players);
+  } else {
+    assignSignBoxesToPlayersNormal(players);
+    enableSignChoose();
+  }
 });
+
+socket.on("player-chose-sign", ({ player, players }) => {
+  // player is guy who chose sign
+  const signIndex = signs.findIndex((sign) => sign.name === player.sign);
+  const isSpectator = isUserSpectator(players);
+  if (isSpectator) {
+    if (leftPlayer.name === player.name)
+      leftPlayer.choice.src = signs[signIndex].src;
+    else rightPlayer.choice.src = signs[signIndex].src;
+  } else {
+    rightPlayer.choice.src = signs[signIndex].src;
+  }
+});
+
+function SetSign() {
+  const { name, src } = signs[this.dataset.index];
+  const sign = name;
+  const Img = src;
+  leftPlayerChoice.src = Img;
+  // disableSignChoose();
+  socket.emit("self-choose-sign", { user, sign });
+}
+
+////////////////// **  ** ///////////////////////////
 
 sendMsg.addEventListener("click", () => {
   const message = msgInput.value;
@@ -116,4 +195,76 @@ function printMessage(message) {
   msgWrapper.appendChild(newMessage);
   msgCounter++;
   if (msgCounter > 6) chat.scrollTop += 40;
+}
+
+function enableSignChoose() {
+  [].forEach.call(signBoxes, (e, i) => {
+    e.dataset.index = i;
+    e.addEventListener("click", SetSign);
+  });
+}
+
+function disableSignChoose() {
+  [].forEach.call(signBoxes, (e, i) => {
+    e.removeEventListener("click", SetSign);
+  });
+}
+
+function isUserSpectator(players) {
+  let isSpectator;
+  for (let i = 0; i < players.length; i++) {
+    isSpectator = players[i].name === user;
+    if (isSpectator) break;
+  }
+  return !isSpectator;
+}
+
+function assignSignBoxesToPlayersNormal(players) {
+  leftPlayer.name = leftNameBox.innerHTML;
+  leftPlayer.choice = leftPlayerChoice;
+  rightPlayer.name = rightNameBox.innerHTML;
+  rightPlayer.choice = rightPlayerChoice;
+}
+
+function assignSignBoxesToPlayersInverted(players) {
+  rightPlayer.name = leftNameBox.innerHTML;
+  rightPlayer.choice = leftPlayerChoice;
+  leftPlayer.name = rightNameBox.innerHTML;
+  leftPlayer.choice = rightPlayerChoice;
+}
+
+function showPlayerSigns(players) {
+  socket.emit("test", { user, leftPlayer, rightPlayer, players });
+  const sign1Index = signs.findIndex((sign) => sign.name === players[0].sign);
+  const sign2Index = signs.findIndex((sign) => sign.name === players[1].sign);
+  // if both players selected sign
+  if (sign1Index !== -1 && sign2Index !== -1)
+    assignSignToBoth(sign1Index, sign2Index, players);
+  else if (
+    (sign1Index !== -1 && sign2Index === -1) ||
+    (sign1Index === -1 && sign2Index !== -1)
+  )
+    assignSignToOne(sign1Index, sign2Index, players);
+  else return;
+}
+
+function assignSignToBoth(sign1Index, sign2Index, players) {
+  if (leftPlayer.name === players[0].name)
+    leftPlayer.choice.src = signs[sign1Index].src;
+  else leftPlayer.choice.src = signs[sign2Index].src;
+  if (rightPlayer.name === players[0].name)
+    rightPlayer.choice.src = signs[sign1Index].src;
+  else rightPlayer.choice.src = signs[sign2Index].src;
+}
+
+function assignSignToOne(sign1Index, sign2Index, players) {
+  if (players[0].sign !== "") {
+    if (leftPlayer.name === players[0].name)
+      leftPlayer.choice.src = signs[sign1Index].src;
+    else rightPlayer.choice.src = signs[sign1Index].src;
+  } else if (players[1].sign !== "") {
+    if (leftPlayer.name === players[1].name)
+      leftPlayer.choice.src = signs[sign2Index].src;
+    else rightPlayer.choice.src = signs[sign2Index].src;
+  }
 }
