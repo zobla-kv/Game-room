@@ -1,25 +1,31 @@
-const http = require("http");
 const io = require("socket.io")(4000);
-const express = require("express");
-const app = express();
 
 const users = {};
 users.online = [];
 const playersInGame = [];
 let players;
+let gameStartTime;
+let roundWinner;
+let gameWinner;
 
 io.on("connection", (socket) => {
   socket.on("new-user", (name) => {
-    users.online.push({ name, inGame: false });
+    users.online.push({ name, inGame: false, onlineSince: Date.now() });
     socket.emit("users-connected", users.online);
     socket.broadcast.emit("users-connected", users.online);
     socket.emit("players-in-game", playersInGame);
-    // for users that join mid-game
     if (players !== undefined) {
       socket.emit("show-players", players);
       socket.emit("show-signs", players);
-      if (players[0].sign !== "" && players[1].sign !== "")
-        socket.emit("start-game-for-mid-game-spec");
+      // for spec that join mid-game
+      if (users.online[users.online.length - 1].onlineSince > gameStartTime) {
+        socket.emit(
+          "start-game-for-mid-game-spec",
+          roundWinner,
+          gameWinner,
+          players
+        );
+      }
     }
   });
 
@@ -55,7 +61,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("players-set", (playersArray) => {
+    gameWinner = null;
     players = playersArray;
+    gameStartTime = Date.now();
     socket.broadcast.emit("show-players", players);
   });
 
@@ -66,10 +74,12 @@ io.on("connection", (socket) => {
       player: players[playerIndex],
       players: players,
     });
+    // if both players chose sign
     if (players[0].sign !== "" && players[1].sign !== "") {
-      const winner = whoIsWinner();
-      socket.emit("start-game", winner);
-      socket.broadcast.emit("start-game", winner);
+      roundWinner = whoWonRound();
+      updateScore(roundWinner);
+      socket.emit("start-game", roundWinner, gameWinner, players);
+      socket.broadcast.emit("start-game", roundWinner, gameWinner, players);
       // da bi stigo broadcast pre uklananja
       setTimeout(() => {
         for (let i = 0; i < players.length; i++) {
@@ -77,6 +87,10 @@ io.on("connection", (socket) => {
         }
       }, 1000);
     }
+  });
+
+  socket.on("start-new-game", () => {
+    socket.emit("hide-start-button");
   });
 });
 
@@ -91,33 +105,26 @@ function updateInGameStatus(player, action) {
   }
 }
 
-function whoIsWinner() {
+function whoWonRound() {
   const player1 = players[0];
   const player2 = players[1];
-  let winner;
-  if (player1.sign === player2.sign) {
-    winner = "tie";
-    return winner;
-  } else if (player1.sign === "paper") {
-    if (player2.sign === "rock") {
-      winner = player1.name;
-      return winner;
-    } else {
-      if (player2.sign === "scissors") {
-        winner = player2.name;
-        return winner;
-      }
-    }
+  if (player1.sign === player2.sign) return "nobody";
+  if (player1.sign === "rock")
+    if (player2.sign === "paper") return player2.name;
+    else return player1.name;
+  else if (player1.sign === "paper")
+    if (player2.sign === "rock") return player1.name;
+    else return player2.name;
+  else if (player1.sign === "scissors") {
+    if (player2.sign === "rock") return player2.name;
+    else return (winner = player1.name);
   }
-  if (player1.sign === "scissors") {
-    if (player2.sign === "rock") {
-      winner = player2.name;
-      return winner;
-    } else {
-      if (player2.sign === "paper") {
-        winner = player1.name;
-        return winner;
-      }
+}
+
+function updateScore(winner) {
+  for (let i = 0; i < players.length; i++)
+    if (players[i].name === winner) {
+      players[i].score++;
+      players[i].score === 2 && (gameWinner = players[i].name);
     }
-  }
 }

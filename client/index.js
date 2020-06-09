@@ -16,10 +16,20 @@ const rightPlayerChoice = document.getElementById("choice2Img");
 const lockEffectLeft = document.getElementById("leftPlayerChooseEffect");
 const lockEffectRight = document.getElementById("rightPlayerChooseEffect");
 const walls = document.getElementsByClassName("walls");
-const wallSound = new Audio("./assets/sound/wall-lifting.wav");
 const scoreBoxes = document.getElementsByClassName("scoreBox");
+const leftScore = document.getElementById("player1Score");
+const rightScore = document.getElementById("player2Score");
 const timer = document.getElementById("timer");
 const info = document.getElementById("info");
+
+//////////* sounds ////////////////
+
+const wallSound = new Audio("./assets/sound/wall-lifting.wav");
+const startGameSound = new Audio("./assets/sound/game-start.mp3");
+const lockSound = new Audio("./assets/sound/lock.wav");
+const gameOverSound = new Audio("./assets/sound/game-over.mp3");
+
+//* ///////////////////////////////
 
 const socket = io("http://localhost:4000");
 
@@ -66,6 +76,7 @@ socket.on("player-joined-game", ({ player, playersInGame }) => {
 
 leaveGame.addEventListener("click", () => {
   socket.emit("self-leave-game", user);
+  hideScoreBoxes();
   leftNameBox.innerHTML = "JOIN";
   leaveGame.style.display = "none";
   signWrapper.style.display = "none";
@@ -85,7 +96,8 @@ socket.on("players-in-game", (playersInGame) => {
 socket.on("player-left-game", ({ player, playersInGame }) => {
   // dal je korisnik koji je izaso bio igrac, ako nije preskace se sve
   if (playersInGame.includes(player)) {
-    // dal je trenutni korisnik igrac
+    hideScoreBoxes();
+    // prikazuje se igracu
     if (playersInGame.includes(user)) rightNameBox.innerHTML = "JOIN";
     else {
       // ovaj blok se prikazuje spectatoru
@@ -124,40 +136,40 @@ const signs = [
   },
 ];
 
-let leftPlayer = {},
+const leftPlayer = {},
   rightPlayer = {};
 
 startGameButton.addEventListener("click", () => {
   const players = [];
   players.push(
-    { name: leftNameBox.innerHTML, role: "player1", sign: "" },
-    { name: rightNameBox.innerHTML, role: "player2", sign: "" }
+    { name: leftNameBox.innerHTML, sign: "", score: 0 },
+    { name: rightNameBox.innerHTML, sign: "", score: 0 }
   );
+  startGameSound.play();
+  clearScoreBoxes();
   showScoreBoxes();
-  showTimer();
   enableEffect();
   enableSignChoose();
-  assignSignBoxesToPlayersNormal(players);
+  assignSignBoxesToPlayers();
   socket.emit("players-set", players);
   startGameButton.style.display = "none";
+  info.innerHTML = "";
 });
 
 socket.on("show-players", (players) => {
-  showScoreBoxes();
-  showTimer();
+  startGameSound.play();
+  clearScoreBoxes();
+  showScoreBoxes(); //!  ne gasi se udje spec posle leava, treba neki if pre ovoga
   enableEffect();
+  assignSignBoxesToPlayers();
   const isSpectator = isUserSpectator(players);
-  if (isSpectator) {
-    if (leftNameBox.innerHTML === players[0].name)
-      assignSignBoxesToPlayersNormal(players);
-    else assignSignBoxesToPlayersInverted(players);
-  } else {
-    assignSignBoxesToPlayersNormal(players);
-    enableSignChoose();
-  }
+  if (!isSpectator) enableSignChoose();
+  startGameButton.style.display = "none";
+  info.innerHTML = "";
 });
 
 socket.on("player-chose-sign", ({ player, players }) => {
+  lockSound.play();
   // player is guy who chose sign
   const signIndex = signs.findIndex((sign) => sign.name === player.sign);
   const isSpectator = isUserSpectator(players);
@@ -176,6 +188,7 @@ socket.on("player-chose-sign", ({ player, players }) => {
 });
 
 function SetSign() {
+  lockSound.play();
   triggerLockEffect(lockEffectLeft);
   const { name, src } = signs[this.dataset.index];
   const sign = name;
@@ -185,21 +198,37 @@ function SetSign() {
   socket.emit("self-choose-sign", { user, sign });
 }
 
-socket.on("start-game", async (winner) => {
+socket.on("start-game", async (roundWinner, gameWinner, players) => {
+  showTimer();
   await startCountdown();
+  setTimeout(() => {
+    hideTimer();
+  }, 200);
   await liftWalls();
-  await displayWinner(winner);
+  updateScore(roundWinner, players);
+  if (gameWinner) {
+    gameOverSound.play();
+    await displayWinner({ type: "gameWinner", winner: gameWinner });
+    if (!isUserSpectator(players)) startGameButton.style.display = "block";
+  } else await displayWinner({ type: "roundWinner", winner: roundWinner });
   await dropWalls();
-  enableSignChoose();
+  if (!gameWinner) enableSignChoose();
 });
 
-socket.on("start-game-for-mid-game-spec", (winner) => {
-  liftWalls();
-});
+socket.on(
+  "start-game-for-mid-game-spec",
+  async (roundWinner, gameWinner, players) => {
+    updateScore(roundWinner, players);
+    if (gameWinner)
+      await displayWinner({ type: "gameWinner", winner: gameWinner });
+    else await displayWinner({ type: "roundWinner", winner: roundWinner });
+  }
+);
 
 ////////////////// **  ** ///////////////////////////
 
-sendMsg.addEventListener("click", () => {
+sendMsg.addEventListener("click", (e) => {
+  e.preventDefault();
   const message = msgInput.value;
   socket.emit("new-message", { user: user, message: message });
   printMessage(`You: ${message}`);
@@ -250,18 +279,11 @@ function isUserSpectator(players) {
   return !isSpectator;
 }
 
-function assignSignBoxesToPlayersNormal(players) {
+function assignSignBoxesToPlayers() {
   leftPlayer.name = leftNameBox.innerHTML;
   leftPlayer.choice = leftPlayerChoice;
   rightPlayer.name = rightNameBox.innerHTML;
   rightPlayer.choice = rightPlayerChoice;
-}
-
-function assignSignBoxesToPlayersInverted(players) {
-  rightPlayer.name = leftNameBox.innerHTML;
-  rightPlayer.choice = leftPlayerChoice;
-  leftPlayer.name = rightNameBox.innerHTML;
-  leftPlayer.choice = rightPlayerChoice;
 }
 
 function showPlayerSigns(players) {
@@ -316,10 +338,10 @@ function triggerLockEffect(element) {
   }, 500);
 }
 
-function liftWalls() {
+async function liftWalls() {
   wallSound.play();
   let wallPosition = 0;
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const lift = setInterval(() => {
       wallPosition -= 1;
       for (let i = 0; i < walls.length; i++)
@@ -332,10 +354,10 @@ function liftWalls() {
   });
 }
 
-function dropWalls() {
+async function dropWalls() {
   wallSound.play();
   let wallPosition = -260;
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const lift = setInterval(() => {
       wallPosition += 1;
       for (let i = 0; i < walls.length; i++)
@@ -354,14 +376,24 @@ function showScoreBoxes() {
   }
 }
 
+function hideScoreBoxes() {
+  for (let i = 0; i < scoreBoxes.length; i++) {
+    scoreBoxes[i].style.display = "none";
+  }
+}
+
 function showTimer() {
   timer.style.display = "block";
 }
 
-function startCountdown() {
+function hideTimer() {
+  timer.style.display = "none";
+}
+
+async function startCountdown() {
   let timerValue = 3;
   timer.innerHTML = timerValue;
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     let count = setInterval(() => {
       timerValue--;
       timer.innerHTML = timerValue;
@@ -373,12 +405,57 @@ function startCountdown() {
   });
 }
 
-function displayWinner(winner) {
-  if (winner === "tie") info.innerHTML = "NOBODY WON THIS TIME";
-  else info.innerHTML = `${winner} WON THIS TIME`;
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      resolve();
-    }, 3000);
-  });
+async function displayWinner({ type, winner }) {
+  info.style.display = "block";
+  if (type === "roundWinner") {
+    info.innerHTML = `${winner} won this round`.toUpperCase();
+    let blinkCount = 0;
+    return new Promise((resolve) => {
+      const blink = setInterval(() => {
+        info.style.display === "block"
+          ? (info.style.display = "none")
+          : (info.style.display = "block");
+        blinkCount++;
+        if (blinkCount === 7) {
+          clearInterval(blink);
+          info.style.display = "none";
+          resolve();
+        }
+      }, 800);
+    });
+  } else {
+    info.innerHTML = `${winner} won game !!!`.toUpperCase();
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 3000);
+    });
+  }
+}
+
+function updateScore(winner, players) {
+  assignScore(players);
+  if (winner === "nobody") return;
+  let playerWhoWon;
+  for (let i = 0; i < players.length; i++)
+    if (players[i].name === winner) playerWhoWon = players[i];
+  if (leftPlayer.name === winner) leftScore.innerHTML = playerWhoWon.score;
+  else rightScore.innerHTML = playerWhoWon.score;
+}
+
+function assignScore(players) {
+  if (leftPlayer.name === players[0].name)
+    leftScore.innerHTML = players[0].score;
+  else rightScore.innerHTML = players[0].score;
+  if (rightPlayer.name === players[1].name)
+    rightScore.innerHTML = players[1].score;
+  else leftPlayer.innerHTML = players[1].score;
+}
+
+leftScore.innerHTML = 0;
+rightScore.innerHTML = 0;
+
+function clearScoreBoxes() {
+  leftScore.innerHTML = 0;
+  rightScore.innerHTML = 0;
 }
