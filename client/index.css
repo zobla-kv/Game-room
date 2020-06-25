@@ -1,33 +1,46 @@
 * {
   box-sizing: border-box;
+  margin: 0;
 }
 
 body {
   background-color: black;
+}
+
+:root {
+  --dark: #121212;
+}
+
+#room {
+  background-size: contain;
+  width: 100%;
+  height: 100vh;
   color: white;
+  border: 2px solid black;
 }
 
 #usersOnline {
-  border: 2px solid white;
+  border: 1px solid white;
+  background-color: var(--dark);
   width: 20%;
-  height: 20vh;
+  height: 22vh;
   position: absolute;
   right: 0;
   top: 0;
+  overflow: hidden;
 }
 
 #usersOnline h3 {
   font-family: sans-serif;
   font-size: 2vw;
-  position: absolute;
+  position: relative;
   margin: auto;
   left: 20%;
 }
 
 #usersOnlineListWrapper {
   border-top: 1px solid white;
-  margin-top: 11%;
-  height: 75%;
+  height: 90%;
   overflow: auto;
 }
 
@@ -43,17 +56,19 @@ body {
 #chat {
   position: absolute;
   border: 2px solid white;
+  background-color: var(--dark);
   width: 20%;
   height: 40vh;
   overflow: auto;
   right: 0;
-  top: 25%;
+  top: 28%;
 }
 
 #message {
   border: 1px solid blue;
   padding: 7px;
   width: 100%;
+  word-wrap: break-word;
 }
 
 #sendWrapper {
@@ -61,16 +76,20 @@ body {
   height: 15%;
   top: 85%;
   bottom: 0;
-  background-color: black;
+  background-color: var(--dark);
   width: 100%;
   display: flex;
   justify-content: space-around;
   align-items: center;
 }
 
+#sendWrapper input {
+  width: 70%;
+}
+
 #sendWrapper input,
 button {
-  height: 60%;
+  height: 20px;
 }
 
 #messageSend {
@@ -84,6 +103,7 @@ button {
 
 .playerNameBox {
   border: 2px solid white;
+  background-color: var(--dark);
   width: 7%;
   height: 7vh;
   position: absolute;
@@ -104,7 +124,8 @@ button {
 
 #leaveGame {
   border: 2px solid white;
-  width: 5%;
+  background-color: var(--dark);
+  width: 60px;
   height: 5vh;
   text-align: center;
   line-height: 4vh;
@@ -126,7 +147,6 @@ button {
 
 .sign {
   height: 30%;
-  border: 2px solid white;
   cursor: pointer;
 }
 
@@ -208,6 +228,7 @@ button {
   width: 5%;
   height: 8vh;
   border: 2px solid white;
+  background-color: var(--dark);
   top: 70%;
   text-align: center;
   line-height: 7vh;
@@ -235,7 +256,7 @@ button {
   display: none;
 }
 
-#info {
+#winnerInfo {
   position: absolute;
   width: 30%;
   height: 7vh;
@@ -243,4 +264,151 @@ button {
   text-align: center;
   line-height: 6vh;
   font-size: 2vw;
+}
+
+#info {
+  width: 20%;
+  height: 20vh;
+  position: absolute;
+  top: 70%;
+  left: 80%;
+}
+
+#infoItem {
+  height: 5vh;
+  text-align: center;
+  line-height: 5vh;
+  opacity: 0;
+  font-size: 20px;
+}
+
+@media only screen and (max-width: 600px) {
+  #usersOnline {
+    width: 100%;
+    height: 70px;
+  }
+
+  #usersOnline h3 {
+    font-size: 30px !important;
+    margin-left: 11% !important;
+  }
+
+  #usersOnlineListWrapper {
+    width: 100%;
+    height: 60% !important;
+    border: 2px solid blue;
+  }
+
+  #usersOnlineListWrapper li {
+    margin: 7px 15px 15px 10px;
+  }
+
+  #chat {
+    top: 100%;
+    width: 100%;
+  }
+
+  #info {
+    top: 80px !important;
+    height: 10vh !important;
+  }
+
+  #winnerInfo {
+    margin-top: 20%;
+  }
+
+  #leaveGame {
+    margin-top: 100px;
+  }
+
+  .playerNameBox,
+  #signWrapper,
+  .playerChoice,
+  #startGameButton,
+  #leftPlayerChooseEffect,
+  #rightPlayerChooseEffect,
+  .scoreBox,
+  #timer {
+    margin-top: 50px;
+    font-size: 20px;
+  }
+
+  .playerNameBox {
+    width: 15%;
+  }
+
+  .playerChoice {
+    width: 45%;
+  }
+
+  #player1Choice,
+  #leftPlayerChooseEffect {
+    left: 3%;
+  }
+
+  #player2Choice,
+  #rightPlayerChooseEffect {
+    left: 52%;
+  }
+
+  #leftPlayerChooseEffect,
+  #rightPlayerChooseEffect {
+    width: 45%;
+  }
+
+  #signWrapper {
+    width: 90%;
+    flex-direction: row;
+    justify-content: space-between;
+    top: 73%;
+    left: 5%;
+  }
+
+  #player1 {
+    left: 12%;
+  }
+
+  #player1Score,
+  #player2Score {
+    height: 43px;
+    top: 17%;
+  }
+
+  #player1Score {
+    left: 35%;
+  }
+
+  #player2 {
+    left: 74%;
+  }
+
+  #player2Score {
+    left: 54%;
+  }
+
+  .scoreBox {
+    width: 50px;
+  }
+
+  #winnerInfo {
+    margin-top: 80px;
+    width: 50%;
+    font-size: 20px;
+  }
+
+  #startGameButton {
+    top: 450px;
+    left: 38%;
+    width: 120px;
+    display: none;
+  }
+
+  #sendWrapper button {
+    width: 100px;
+  }
+
+  #timer {
+    top: 5%;
+    left: 47%;
+  }
 }

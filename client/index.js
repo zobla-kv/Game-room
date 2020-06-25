@@ -20,6 +20,7 @@ const scoreBoxes = document.getElementsByClassName("scoreBox");
 const leftScore = document.getElementById("player1Score");
 const rightScore = document.getElementById("player2Score");
 const timer = document.getElementById("timer");
+const winnerInfo = document.getElementById("winnerInfo");
 const info = document.getElementById("info");
 
 //////////* sounds ////////////////
@@ -49,12 +50,20 @@ socket.on("print-message", ({ user, message }) => {
 });
 
 window.onbeforeunload = () => {
-  // socket.emit("self-leave-game", user); // ukloni ga iz gejma al ne iz chata
-  socket.emit("self-leave", user); //! koji stoji ovde ne emituje se svaki put
+  socket.emit("self-leave-game", { player: user, type: "left-site" });
 };
 
+leaveGame.addEventListener("click", () => {
+  socket.emit("self-leave-game", { player: user, type: "left-game" });
+  hideScoreBoxes();
+  leftNameBox.innerHTML = "JOIN";
+  leaveGame.style.display = "none";
+  signWrapper.style.display = "none";
+  startGameButton.style.display = "none";
+});
+
 socket.on("user-disconnected", ({ usersOnline, removedUser }) => {
-  socket.emit("self-leave-game", removedUser); // ukloni ga s chata al ne iz gejma, //! svaki emituje ovo, a treba samo jedan, ne valjda da bude ovde
+  userLeftInfo(removedUser);
   printUsers(usersOnline);
 });
 
@@ -74,15 +83,6 @@ socket.on("player-joined-game", ({ player, playersInGame }) => {
     startGameButton.style.display = "block";
 });
 
-leaveGame.addEventListener("click", () => {
-  socket.emit("self-leave-game", user);
-  hideScoreBoxes();
-  leftNameBox.innerHTML = "JOIN";
-  leaveGame.style.display = "none";
-  signWrapper.style.display = "none";
-  startGameButton.style.display = "none";
-});
-
 socket.on("players-in-game", (playersInGame) => {
   if (playersInGame.length === 1) {
     rightNameBox.innerHTML = playersInGame[0];
@@ -98,9 +98,11 @@ socket.on("player-left-game", ({ player, playersInGame }) => {
   if (playersInGame.includes(player)) {
     hideScoreBoxes();
     // prikazuje se igracu
-    if (playersInGame.includes(user)) rightNameBox.innerHTML = "JOIN";
-    else {
-      // ovaj blok se prikazuje spectatoru
+    if (playersInGame.includes(user)) {
+      rightNameBox.innerHTML = "JOIN";
+      disableSignChoose();
+    } else {
+      // prikazuje se spectatoru
       if (playersInGame.length === 2) {
         const index =
           playersInGame.findIndex((e) => e === player) === 0 ? 1 : 0;
@@ -153,19 +155,19 @@ startGameButton.addEventListener("click", () => {
   assignSignBoxesToPlayers();
   socket.emit("players-set", players);
   startGameButton.style.display = "none";
-  info.innerHTML = "";
+  winnerInfo.innerHTML = "";
 });
 
 socket.on("show-players", (players) => {
   startGameSound.play();
   clearScoreBoxes();
-  showScoreBoxes(); //!  ne gasi se udje spec posle leava, treba neki if pre ovoga
+  showScoreBoxes();
   enableEffect();
   assignSignBoxesToPlayers();
   const isSpectator = isUserSpectator(players);
   if (!isSpectator) enableSignChoose();
   startGameButton.style.display = "none";
-  info.innerHTML = "";
+  winnerInfo.innerHTML = "";
 });
 
 socket.on("player-chose-sign", ({ player, players }) => {
@@ -217,11 +219,16 @@ socket.on("start-game", async (roundWinner, gameWinner, players) => {
 
 socket.on(
   "start-game-for-mid-game-spec",
-  async (roundWinner, gameWinner, players) => {
-    updateScore(roundWinner, players);
-    if (gameWinner)
-      await displayWinner({ type: "gameWinner", winner: gameWinner });
-    else await displayWinner({ type: "roundWinner", winner: roundWinner });
+  async (roundWinner, gameWinner, players, gameRunning) => {
+    if (gameRunning) {
+      updateScore(roundWinner, players);
+      if (gameWinner)
+        await displayWinner({ type: "gameWinner", winner: gameWinner });
+      else await displayWinner({ type: "roundWinner", winner: roundWinner });
+    } else {
+      hideScoreBoxes();
+      winnerInfo.innerHTML = "";
+    }
   }
 );
 
@@ -239,7 +246,7 @@ function printUsers(users) {
   userslistWrapper.innerHTML = "";
   for (let i = 0; i < users.length; i++) {
     const user = document.createElement("li");
-    const span = document.createElement("span"); // da bi mogo da primaknem text blize bulletu
+    const span = document.createElement("span"); // get text closer to a bullet
     span.innerHTML = users[i].name;
     span.innerHTML = span.innerHTML.padEnd(8);
     user.appendChild(span);
@@ -338,7 +345,7 @@ function triggerLockEffect(element) {
   }, 500);
 }
 
-async function liftWalls() {
+function liftWalls() {
   wallSound.play();
   let wallPosition = 0;
   return new Promise((resolve) => {
@@ -354,7 +361,7 @@ async function liftWalls() {
   });
 }
 
-async function dropWalls() {
+function dropWalls() {
   wallSound.play();
   let wallPosition = -260;
   return new Promise((resolve) => {
@@ -390,7 +397,7 @@ function hideTimer() {
   timer.style.display = "none";
 }
 
-async function startCountdown() {
+function startCountdown() {
   let timerValue = 3;
   timer.innerHTML = timerValue;
   return new Promise((resolve) => {
@@ -405,26 +412,26 @@ async function startCountdown() {
   });
 }
 
-async function displayWinner({ type, winner }) {
-  info.style.display = "block";
+function displayWinner({ type, winner }) {
+  winnerInfo.style.display = "block";
   if (type === "roundWinner") {
-    info.innerHTML = `${winner} won this round`.toUpperCase();
+    winnerInfo.innerHTML = `${winner} won this round`.toUpperCase();
     let blinkCount = 0;
     return new Promise((resolve) => {
       const blink = setInterval(() => {
-        info.style.display === "block"
-          ? (info.style.display = "none")
-          : (info.style.display = "block");
+        winnerInfo.style.display === "block"
+          ? (winnerInfo.style.display = "none")
+          : (winnerInfo.style.display = "block");
         blinkCount++;
-        if (blinkCount === 7) {
+        if (blinkCount === 8) {
           clearInterval(blink);
-          info.style.display = "none";
+          winnerInfo.style.display = "none";
           resolve();
         }
       }, 800);
     });
   } else {
-    info.innerHTML = `${winner} won game !!!`.toUpperCase();
+    winnerInfo.innerHTML = `${winner} won game !!!`.toUpperCase();
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve();
@@ -458,4 +465,29 @@ rightScore.innerHTML = 0;
 function clearScoreBoxes() {
   leftScore.innerHTML = 0;
   rightScore.innerHTML = 0;
+}
+
+function userLeftInfo(user) {
+  const infoItem = document.createElement("div");
+  infoItem.setAttribute("id", "infoItem");
+  infoItem.innerHTML = `${user} left`;
+  info.appendChild(infoItem);
+  let opacity = 0;
+  let show = setInterval(() => {
+    opacity += 0.1;
+    infoItem.style.opacity = opacity;
+    if (opacity > 1) {
+      clearInterval(show);
+      setTimeout(() => {
+        let hide = setInterval(() => {
+          opacity -= 0.1;
+          infoItem.style.opacity = opacity;
+          if (opacity < 0) {
+            clearInterval(hide);
+            info.removeChild(infoItem);
+          }
+        }, 50);
+      }, 2000);
+    }
+  }, 50);
 }

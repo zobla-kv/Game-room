@@ -4,6 +4,7 @@ const users = {};
 users.online = [];
 const playersInGame = [];
 let players;
+let gameRunning = false;
 let gameStartTime;
 let roundWinner;
 let gameWinner;
@@ -23,7 +24,8 @@ io.on("connection", (socket) => {
           "start-game-for-mid-game-spec",
           roundWinner,
           gameWinner,
-          players
+          players,
+          gameRunning
         );
       }
     }
@@ -38,22 +40,18 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("player-joined-game", { player, playersInGame });
   });
 
-  socket.on("self-leave-game", (player) => {
-    // broadcast ne radi lepo kad ostane 1 na stranici O.o' !
+  socket.on("self-leave-game", ({ player, type }) => {
     socket.broadcast.emit("player-left-game", { player, playersInGame });
+    gameRunning = false;
     // timeout da bi stiglo svima da emituje pre nego sto ga ukloni
     setTimeout(() => {
       updateInGameStatus(player, "remove");
-    }, 1000);
+      if (type == "left-site") removeUserFromSite(player, socket);
+    }, 10);
   });
 
-  socket.on("self-leave", (user) => {
-    const userIndex = users.online.findIndex((e) => e.name === user);
-    let removedUser = users.online.splice(userIndex, 1);
-    socket.broadcast.emit("user-disconnected", {
-      usersOnline: users.online,
-      removedUser: removedUser[0].name,
-    });
+  socket.on("self-leave", ({ user, type }) => {
+    removeUserFromSite(user, socket);
   });
 
   socket.on("test", (p) => {
@@ -64,6 +62,7 @@ io.on("connection", (socket) => {
     gameWinner = null;
     players = playersArray;
     gameStartTime = Date.now();
+    gameRunning = true;
     socket.broadcast.emit("show-players", players);
   });
 
@@ -95,9 +94,6 @@ io.on("connection", (socket) => {
 });
 
 function updateInGameStatus(player, action) {
-  const playerIndex = users.online.findIndex((e) => e.name === player);
-  if (playerIndex !== -1)
-    users.online[playerIndex].inGame = !users.online[playerIndex].inGame;
   if (action === "add") playersInGame.push(player);
   else {
     const inGameIndex = playersInGame.findIndex((e) => e === player);
@@ -127,4 +123,13 @@ function updateScore(winner) {
       players[i].score++;
       players[i].score === 2 && (gameWinner = players[i].name);
     }
+}
+
+function removeUserFromSite(user, socket) {
+  const userIndex = users.online.findIndex((e) => e.name === user);
+  let removedUser = users.online.splice(userIndex, 1);
+  socket.broadcast.emit("user-disconnected", {
+    usersOnline: users.online,
+    removedUser: removedUser[0].name,
+  });
 }

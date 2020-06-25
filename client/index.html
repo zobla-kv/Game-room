@@ -3,42 +3,46 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>Game room</title>
+    <link rel="shortcut icon" href="../client/assets/img/favicon.png" type="image/x-icon">
     <link rel="stylesheet" href="index.css" />
-    <script defer src="http://localhost:4000/socket.io/socket.io.js"></script>
+    <script src="http://localhost:4000/socket.io/socket.io.js"></script>
     <script defer src="index.js"></script>
   </head>
   <body>
-    <div id="info"></div>
-    <div id="signWrapper">
-      <div id="sign1" class="sign">
-        <img src="/client/assets/img/rock-sm.PNG" />
+    <main id="room">
+    <div id="winnerInfo"></div>
+    <div id='gameItems'>
+      <div id="signWrapper">
+        <div id="sign1" class="sign">
+          <img src="/client/assets/img/rock-sm.PNG" />
+        </div>
+        <div id="sign2" class="sign">
+          <img src="/client/assets/img/paper-sm.PNG" />
+        </div>
+        <div id="sign3" class="sign">
+          <img src="/client/assets/img/scissors-sm.PNG" />
+        </div>
       </div>
-      <div id="sign2" class="sign">
-        <img src="/client/assets/img/paper-sm.PNG" />
+      <div id="startGameButton">START</div>
+      <div id="timer"></div>
       </div>
-      <div id="sign3" class="sign">
-        <img src="/client/assets/img/scissors-sm.PNG" />
+      <div id="player1" class="playerNameBox">JOIN</div>
+      <div id="player2" class="playerNameBox">JOIN</div>
+      <div id="player1Choice" class="playerChoice">
+        <img id="wall1" class='walls' src="./assets/img/wall.jpg" />
+        <img id="choice1Img" src='./assets/img/rock-lg.PNG'/>
       </div>
+      <div id="player1Score" class="scoreBox"></div>
+      <div id="leftPlayerChooseEffect" ></div>
+      <div id="player2Choice" class="playerChoice">
+        <img id="wall2" class='walls' src="./assets/img/wall.jpg" />
+        <img id="choice2Img" />
+      </div>
+      <div id="player2Score" class="scoreBox"></div>
+      <div id="rightPlayerChooseEffect"></div>
+      <div id="leaveGame">Leave</div>
     </div>
-    <div id="startGameButton">START</div>
-    <div id="timer"></div>
-    </div>
-    <div id="player1" class="playerNameBox">JOIN</div>
-    <div id="player2" class="playerNameBox">JOIN</div>
-    <div id="player1Choice" class="playerChoice">
-      <img id="wall1" class='walls' src="./assets/img/wall.jpg" />
-      <img id="choice1Img" src='./assets/img/rock-lg.PNG'/>
-    </div>
-    <div id="player1Score" class="scoreBox"></div>
-    <div id="leftPlayerChooseEffect" ></div>
-    <div id="player2Choice" class="playerChoice">
-      <img id="wall2" class='walls' src="./assets/img/wall.jpg" />
-      <img id="choice2Img" />
-    </div>
-    <div id="player2Score" class="scoreBox"></div>
-    <div id="rightPlayerChooseEffect"></div>
-    <div id="leaveGame">Leave</div>
     <div id="usersOnline">
       <h3>Users online</h3>
       <div id="usersOnlineListWrapper"></div>
@@ -50,6 +54,7 @@
         <button id="messageSend" type="submit">Send</button>
       </form>
     </div>
-    
+    <div id="info"></div>
+  </main>
   </body>
 </html>
