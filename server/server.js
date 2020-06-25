@@ -16,12 +16,12 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("users-connected", users.online);
     socket.emit("players-in-game", playersInGame);
     if (players !== undefined) {
-      socket.emit("show-players", players);
+      socket.emit("start-game", players);
       socket.emit("show-signs", players);
       // for spec that join mid-game
       if (users.online[users.online.length - 1].onlineSince > gameStartTime) {
         socket.emit(
-          "start-game-for-mid-game-spec",
+          "adjust-for-mid-game-spec",
           roundWinner,
           gameWinner,
           players,
@@ -43,7 +43,7 @@ io.on("connection", (socket) => {
   socket.on("self-leave-game", ({ player, type }) => {
     socket.broadcast.emit("player-left-game", { player, playersInGame });
     gameRunning = false;
-    // timeout da bi stiglo svima da emituje pre nego sto ga ukloni
+    // broadcast before removal
     setTimeout(() => {
       updateInGameStatus(player, "remove");
       if (type == "left-site") removeUserFromSite(player, socket);
@@ -54,16 +54,12 @@ io.on("connection", (socket) => {
     removeUserFromSite(user, socket);
   });
 
-  socket.on("test", (p) => {
-    console.log(p);
-  });
-
   socket.on("players-set", (playersArray) => {
     gameWinner = null;
     players = playersArray;
     gameStartTime = Date.now();
     gameRunning = true;
-    socket.broadcast.emit("show-players", players);
+    socket.broadcast.emit("start-game", players);
   });
 
   socket.on("self-choose-sign", ({ user, sign }) => {
@@ -77,19 +73,15 @@ io.on("connection", (socket) => {
     if (players[0].sign !== "" && players[1].sign !== "") {
       roundWinner = whoWonRound();
       updateScore(roundWinner);
-      socket.emit("start-game", roundWinner, gameWinner, players);
-      socket.broadcast.emit("start-game", roundWinner, gameWinner, players);
-      // da bi stigo broadcast pre uklananja
+      socket.emit("start-round", roundWinner, gameWinner, players);
+      socket.broadcast.emit("start-round", roundWinner, gameWinner, players);
+      // broadcast before removal
       setTimeout(() => {
         for (let i = 0; i < players.length; i++) {
           players[i].sign = "";
         }
       }, 1000);
     }
-  });
-
-  socket.on("start-new-game", () => {
-    socket.emit("hide-start-button");
   });
 });
 
@@ -121,7 +113,7 @@ function updateScore(winner) {
   for (let i = 0; i < players.length; i++)
     if (players[i].name === winner) {
       players[i].score++;
-      players[i].score === 2 && (gameWinner = players[i].name);
+      players[i].score === 3 && (gameWinner = players[i].name);
     }
 }
 

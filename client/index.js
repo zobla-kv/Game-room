@@ -1,128 +1,44 @@
+//* chat elements ////////////
 const chat = document.getElementById("chat");
 const message = document.getElementById("message");
 const msgInput = document.getElementById("messageInput");
 const sendMsg = document.getElementById("messageSend");
 const msgWrapper = document.getElementById("messageWrapper");
+//* users online elemens /////
 const usersOnline = document.getElementById("usersOnline");
 const userslistWrapper = document.getElementById("usersOnlineListWrapper");
-const leftNameBox = document.getElementById("player1"); // name box
+//* player elements //////////
+const leftNameBox = document.getElementById("player1");
 const rightNameBox = document.getElementById("player2");
-const leaveGame = document.getElementById("leaveGame");
-const signWrapper = document.getElementById("signWrapper");
-const startGameButton = document.getElementById("startGameButton");
-const signBoxes = document.getElementsByClassName("sign");
 const leftPlayerChoice = document.getElementById("choice1Img");
 const rightPlayerChoice = document.getElementById("choice2Img");
-const lockEffectLeft = document.getElementById("leftPlayerChooseEffect");
-const lockEffectRight = document.getElementById("rightPlayerChooseEffect");
-const walls = document.getElementsByClassName("walls");
 const scoreBoxes = document.getElementsByClassName("scoreBox");
 const leftScore = document.getElementById("player1Score");
 const rightScore = document.getElementById("player2Score");
+//* gameplay /////////////////////////
+const startGameButton = document.getElementById("startGameButton");
+const leaveGame = document.getElementById("leaveGame");
+const signWrapper = document.getElementById("signWrapper");
+const signBoxes = document.getElementsByClassName("sign");
+const lockEffectLeft = document.getElementById("leftPlayerChooseEffect");
+const lockEffectRight = document.getElementById("rightPlayerChooseEffect");
+const walls = document.getElementsByClassName("walls");
 const timer = document.getElementById("timer");
 const winnerInfo = document.getElementById("winnerInfo");
 const info = document.getElementById("info");
-
 //////////* sounds ////////////////
-
 const wallSound = new Audio("./assets/sound/wall-lifting.wav");
 const startGameSound = new Audio("./assets/sound/game-start.mp3");
 const lockSound = new Audio("./assets/sound/lock.wav");
 const gameOverSound = new Audio("./assets/sound/game-over.mp3");
-
 //* ///////////////////////////////
 
 const socket = io("http://localhost:4000");
-
 let user = "";
-while (user === "" || user === null) {
-  user = prompt("Enter your name");
+while (user === "" || user === null || user.length > 8) {
+  user = prompt("Enter your name(max 8 characters)");
 }
 
-socket.emit("new-user", user);
-
-socket.on("users-connected", (users) => {
-  printUsers(users);
-});
-
-socket.on("print-message", ({ user, message }) => {
-  printMessage(`${user}: ${message}`);
-});
-
-window.onbeforeunload = () => {
-  socket.emit("self-leave-game", { player: user, type: "left-site" });
-};
-
-leaveGame.addEventListener("click", () => {
-  socket.emit("self-leave-game", { player: user, type: "left-game" });
-  hideScoreBoxes();
-  leftNameBox.innerHTML = "JOIN";
-  leaveGame.style.display = "none";
-  signWrapper.style.display = "none";
-  startGameButton.style.display = "none";
-});
-
-socket.on("user-disconnected", ({ usersOnline, removedUser }) => {
-  userLeftInfo(removedUser);
-  printUsers(usersOnline);
-});
-
-leftNameBox.addEventListener("click", () => {
-  if (leftNameBox.innerHTML !== "JOIN") return;
-  socket.emit("self-join-game", user);
-  leftNameBox.innerHTML = user;
-  leaveGame.style.display = "block";
-  signWrapper.style.display = "flex";
-});
-
-socket.on("player-joined-game", ({ player, playersInGame }) => {
-  rightNameBox.innerHTML === "JOIN"
-    ? (rightNameBox.innerHTML = player)
-    : (leftNameBox.innerHTML = player);
-  if (playersInGame.length === 2 && playersInGame.includes(user))
-    startGameButton.style.display = "block";
-});
-
-socket.on("players-in-game", (playersInGame) => {
-  if (playersInGame.length === 1) {
-    rightNameBox.innerHTML = playersInGame[0];
-  }
-  if (playersInGame.length === 2) {
-    leftNameBox.innerHTML = playersInGame[0];
-    rightNameBox.innerHTML = playersInGame[1];
-  }
-});
-
-socket.on("player-left-game", ({ player, playersInGame }) => {
-  // dal je korisnik koji je izaso bio igrac, ako nije preskace se sve
-  if (playersInGame.includes(player)) {
-    hideScoreBoxes();
-    // prikazuje se igracu
-    if (playersInGame.includes(user)) {
-      rightNameBox.innerHTML = "JOIN";
-      disableSignChoose();
-    } else {
-      // prikazuje se spectatoru
-      if (playersInGame.length === 2) {
-        const index =
-          playersInGame.findIndex((e) => e === player) === 0 ? 1 : 0;
-        rightNameBox.innerHTML = playersInGame[index];
-        leftNameBox.innerHTML = "JOIN";
-      } else if (playersInGame.length === 1) {
-        leftNameBox.innerHTML = "JOIN";
-        rightNameBox.innerHTML = "JOIN";
-      }
-    }
-    startGameButton.style.display = "none";
-  }
-});
-
-// for users that join mid-game
-socket.on("show-signs", (players) => {
-  showPlayerSigns(players);
-});
-
-//////////////////// ** game **////////////////////////////
 const signs = [
   {
     name: "rock",
@@ -141,6 +57,29 @@ const signs = [
 const leftPlayer = {},
   rightPlayer = {};
 
+////////* EMITTERS ///////////////////////////////////////
+
+socket.emit("new-user", user);
+
+// send message
+sendMsg.addEventListener("click", (e) => {
+  e.preventDefault();
+  const message = msgInput.value;
+  socket.emit("new-message", { user: user, message: message });
+  printMessage(`You: ${message}`);
+  msgInput.value = "";
+});
+
+// join game
+leftNameBox.addEventListener("click", () => {
+  if (leftNameBox.innerHTML !== "JOIN") return;
+  socket.emit("self-join-game", user);
+  leftNameBox.innerHTML = user;
+  leaveGame.style.display = "block";
+  signWrapper.style.display = "flex";
+});
+
+// start game
 startGameButton.addEventListener("click", () => {
   const players = [];
   players.push(
@@ -158,7 +97,57 @@ startGameButton.addEventListener("click", () => {
   winnerInfo.innerHTML = "";
 });
 
-socket.on("show-players", (players) => {
+// leave game
+leaveGame.addEventListener("click", () => {
+  socket.emit("self-leave-game", { player: user, type: "left-game" });
+  hideScoreBoxes();
+  leftNameBox.innerHTML = "JOIN";
+  leaveGame.style.display = "none";
+  signWrapper.style.display = "none";
+  startGameButton.style.display = "none";
+});
+
+// leave site
+window.onbeforeunload = () => {
+  socket.emit("self-leave-game", { player: user, type: "left-site" });
+};
+
+////////* ///////////////////////////////////////////////
+
+////////* LISTENERS /////////////////////////////////////
+
+// display connected users
+socket.on("users-connected", (users) => {
+  printUsers(users);
+});
+
+// display new message
+socket.on("print-message", ({ user, message }) => {
+  printMessage(`${user}: ${message}`);
+});
+
+// display new player on empty side
+socket.on("player-joined-game", ({ player, playersInGame }) => {
+  rightNameBox.innerHTML === "waiting.."
+    ? (rightNameBox.innerHTML = player)
+    : (leftNameBox.innerHTML = player);
+  if (playersInGame.length === 2 && playersInGame.includes(user))
+    startGameButton.style.display = "block";
+});
+
+// display both players
+socket.on("players-in-game", (playersInGame) => {
+  if (playersInGame.length === 1) {
+    rightNameBox.innerHTML = playersInGame[0];
+  }
+  if (playersInGame.length === 2) {
+    leftNameBox.innerHTML = playersInGame[0];
+    rightNameBox.innerHTML = playersInGame[1];
+  }
+});
+
+// start game
+socket.on("start-game", (players) => {
   startGameSound.play();
   clearScoreBoxes();
   showScoreBoxes();
@@ -170,6 +159,7 @@ socket.on("show-players", (players) => {
   winnerInfo.innerHTML = "";
 });
 
+// sign chosen
 socket.on("player-chose-sign", ({ player, players }) => {
   lockSound.play();
   // player is guy who chose sign
@@ -189,18 +179,8 @@ socket.on("player-chose-sign", ({ player, players }) => {
   }
 });
 
-function SetSign() {
-  lockSound.play();
-  triggerLockEffect(lockEffectLeft);
-  const { name, src } = signs[this.dataset.index];
-  const sign = name;
-  const Img = src;
-  leftPlayerChoice.src = Img;
-  disableSignChoose();
-  socket.emit("self-choose-sign", { user, sign });
-}
-
-socket.on("start-game", async (roundWinner, gameWinner, players) => {
+// after player chosen signs
+socket.on("start-round", async (roundWinner, gameWinner, players) => {
   showTimer();
   await startCountdown();
   setTimeout(() => {
@@ -217,8 +197,40 @@ socket.on("start-game", async (roundWinner, gameWinner, players) => {
   if (!gameWinner) enableSignChoose();
 });
 
+// player left
+socket.on("player-left-game", ({ player, playersInGame }) => {
+  // check wheather user that left was a player, if not skip eveything
+  if (playersInGame.includes(player)) {
+    hideScoreBoxes();
+    // what player sees
+    if (playersInGame.includes(user)) {
+      rightNameBox.innerHTML = "waiting..";
+      disableSignChoose();
+    } else {
+      // what spectator sees
+      if (playersInGame.length === 2) {
+        const index =
+          playersInGame.findIndex((e) => e === player) === 0 ? 1 : 0;
+        rightNameBox.innerHTML = playersInGame[index];
+        leftNameBox.innerHTML = "JOIN";
+      } else if (playersInGame.length === 1) {
+        leftNameBox.innerHTML = "JOIN";
+        rightNameBox.innerHTML = "waiting..";
+      }
+    }
+    startGameButton.style.display = "none";
+  }
+});
+
+// user disconnected
+socket.on("user-disconnected", ({ usersOnline, removedUser }) => {
+  userLeftInfo(removedUser);
+  printUsers(usersOnline);
+});
+
+// for users that join mid-game
 socket.on(
-  "start-game-for-mid-game-spec",
+  "adjust-for-mid-game-spec",
   async (roundWinner, gameWinner, players, gameRunning) => {
     if (gameRunning) {
       updateScore(roundWinner, players);
@@ -232,15 +244,23 @@ socket.on(
   }
 );
 
-////////////////// **  ** ///////////////////////////
-
-sendMsg.addEventListener("click", (e) => {
-  e.preventDefault();
-  const message = msgInput.value;
-  socket.emit("new-message", { user: user, message: message });
-  printMessage(`You: ${message}`);
-  msgInput.value = "";
+// this too for mid-game spec
+socket.on("show-signs", (players) => {
+  showPlayerSigns(players);
 });
+
+////////* //////////////////////////////////////////////
+
+function SetSign() {
+  lockSound.play();
+  triggerLockEffect(lockEffectLeft);
+  const { name, src } = signs[this.dataset.index];
+  const sign = name;
+  const Img = src;
+  leftPlayerChoice.src = Img;
+  disableSignChoose();
+  socket.emit("self-choose-sign", { user, sign });
+}
 
 function printUsers(users) {
   userslistWrapper.innerHTML = "";
@@ -353,7 +373,7 @@ function liftWalls() {
       wallPosition -= 1;
       for (let i = 0; i < walls.length; i++)
         walls[i].style.marginTop = wallPosition + "px";
-      if (wallPosition < -260) {
+      if (wallPosition < -270) {
         clearInterval(lift);
         resolve();
       }
@@ -363,7 +383,7 @@ function liftWalls() {
 
 function dropWalls() {
   wallSound.play();
-  let wallPosition = -260;
+  let wallPosition = -270;
   return new Promise((resolve) => {
     const lift = setInterval(() => {
       wallPosition += 1;
@@ -490,4 +510,23 @@ function userLeftInfo(user) {
       }, 2000);
     }
   }, 50);
+}
+
+// hides transition effects on window resize
+stopResponsiveTransition();
+function stopResponsiveTransition() {
+  const classes = document.body.classList;
+  let timer = null;
+  window.addEventListener("resize", function () {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    } else {
+      classes.add("stop-transition");
+    }
+    timer = setTimeout(() => {
+      classes.remove("stop-transition");
+      timer = null;
+    }, 100);
+  });
 }
