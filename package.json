@@ -1,7 +1,7 @@
 {
-  "name": "chat-2",
+  "name": "online-rock-paper-scissors-game-room",
   "version": "1.0.0",
-  "description": "",
+  "description": "Typical online room with ability to chat and watch others play",
   "main": "index.js",
   "dependencies": {
     "cors": "^2.8.5",
