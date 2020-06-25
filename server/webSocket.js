@@ -1,4 +1,4 @@
-const io = require("socket.io")(4000);
+const io = require("socket.io")(3000);
 
 const users = {};
 users.online = [];
@@ -125,3 +125,5 @@ function removeUserFromSite(user, socket) {
     removedUser: removedUser[0].name,
   });
 }
+
+module.exports = io;

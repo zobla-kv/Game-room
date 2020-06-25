@@ -42,15 +42,15 @@ while (user === "" || user === null || user.length > 8) {
 const signs = [
   {
     name: "rock",
-    src: "/client/assets/img/rock-lg.PNG",
+    src: "./assets/img/rock-lg.PNG",
   },
   {
     name: "paper",
-    src: "/client/assets/img/paper-lg.PNG",
+    src: "./assets/img/paper-lg.PNG",
   },
   {
     name: "scissors",
-    src: "/client/assets/img/scissors-lg.PNG",
+    src: "./assets/img/scissors-lg.PNG",
   },
 ];
 
