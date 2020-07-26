@@ -1,0 +1,1 @@
+const PORT = process.env.PORT;const cors = require('cors');const io=require("./webSocket"),path=require("path"),express=require("express"),app=express(),server=app.listen(PORT || 4000);io.listen(server),app.use(cors()),app.set('*', cors()),app.use(express.static(path.join(__dirname,"..","/public")));

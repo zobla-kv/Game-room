@@ -1,7 +1,7 @@
 {
-  "name": "chat-2",
+  "name": "online-rock-paper-scissors-game-room",
   "version": "1.0.0",
-  "description": "",
+  "description": "Online room with ability to chat and watch others play",
   "main": "index.js",
   "dependencies": {
     "cors": "^2.8.5",
@@ -9,11 +9,14 @@
     "socket.io": "^2.3.0"
   },
   "devDependencies": {
+    "@babel/cli": "^7.10.3",
+    "@babel/core": "^7.10.3",
+    "@babel/preset-env": "^7.10.3",
     "nodemon": "^2.0.4"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server/server.js"
+    "start": "node server/app.js"
   },
   "author": "",
   "license": "ISC"
